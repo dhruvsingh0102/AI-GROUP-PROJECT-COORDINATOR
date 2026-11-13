@@ -10,6 +10,47 @@ st.set_page_config(page_title="Coordinator", page_icon="🧭", layout="wide")
 storage.init_db()
 
 STATUSES = ["Pending", "In Progress", "Blocked", "Needs Clarification", "Complete"]
+STATUS_COLORS = {
+    "Pending": ("#eef2f7", "#465468"),
+    "In Progress": ("#e8f1ff", "#2456a6"),
+    "Blocked": ("#fff0ed", "#b63d2b"),
+    "Needs Clarification": ("#fff7df", "#8a6410"),
+    "Complete": ("#e7f6ed", "#247347"),
+}
+
+st.markdown(
+    """
+    <style>
+      .stApp { background: #f7f8fb; }
+      [data-testid="stAppViewContainer"] .main .block-container {
+        max-width: 1320px; padding-top: 2rem; padding-bottom: 3rem;
+      }
+      [data-testid="stSidebar"] { background: #f0f3f8; border-right: 1px solid #e2e7ef; }
+      [data-testid="stMetric"] {
+        background: #fff; border: 1px solid #e5e9f0; border-radius: 12px;
+        padding: 14px 16px; box-shadow: 0 1px 3px rgba(22, 35, 58, .04);
+      }
+      [data-testid="stMetricLabel"] { color: #596579; }
+      [data-testid="stMetricValue"] { color: #19263a; }
+      [data-testid="stVerticalBlockBorderWrapper"] {
+        background: #fff; border-color: #e5e9f0; border-radius: 14px;
+      }
+      .stTabs [data-baseweb="tab-list"] { gap: 10px; border-bottom-color: #e5e9f0; }
+      .stTabs [data-baseweb="tab"] { color: #556277; padding: 10px 14px; }
+      .stTabs [aria-selected="true"] { color: #244f93; }
+      div[data-testid="stForm"] { border-color: #e5e9f0; border-radius: 12px; }
+      .coordinator-eyebrow {
+        color: #557098; font-size: .78rem; font-weight: 700;
+        letter-spacing: .08em; text-transform: uppercase; margin-bottom: .25rem;
+      }
+      .coordinator-subtitle { color: #627086; margin-top: -.6rem; margin-bottom: 1.4rem; }
+      @media (max-width: 700px) {
+        [data-testid="stAppViewContainer"] .main .block-container { padding: 1rem .8rem 2rem; }
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 def add_person_form(people):
@@ -52,7 +93,13 @@ def render_task(task):
     with st.container(border=True):
         title_col, status_col = st.columns([4, 1])
         title_col.subheader(f"#{task['id']} · {task['title']}")
-        status_col.markdown(f"**{task['status']}**")
+        bg, fg = STATUS_COLORS.get(task["status"], ("#eef2f7", "#465468"))
+        status_col.markdown(
+            f'<span style="display:inline-block;background:{bg};color:{fg};'
+            f'padding:.35rem .7rem;border-radius:999px;font-size:.82rem;font-weight:700">'
+            f'{task["status"]}</span>',
+            unsafe_allow_html=True,
+        )
         if task["description"]:
             st.write(task["description"])
         st.caption(
@@ -85,8 +132,9 @@ def render_task(task):
                     st.rerun()
 
 
+st.markdown('<div class="coordinator-eyebrow">W-PS-1 · AI Group Project Coordinator</div>', unsafe_allow_html=True)
 st.title("Project Coordinator")
-st.caption("Follow up on project work, track progress, and surface blockers.")
+st.markdown('<div class="coordinator-subtitle">Keep the group project moving. Track progress, replies, and blockers in one place.</div>', unsafe_allow_html=True)
 
 people = storage.people()
 all_tasks = storage.tasks()
@@ -100,8 +148,20 @@ tasks_tab, activity_tab, people_tab = st.tabs(["Tasks", "Activity", "Participant
 with tasks_tab:
     with st.expander("Add a task", expanded=not all_tasks):
         create_task_form(people)
-    status_filter = st.selectbox("Show status", ["All"] + STATUSES)
+    filter_col, search_col = st.columns([1, 2])
+    status_filter = filter_col.selectbox("Show status", ["All"] + STATUSES)
+    search = search_col.text_input("Find a task", placeholder="Search task or blocker")
     visible_tasks = all_tasks if status_filter == "All" else [task for task in all_tasks if task["status"] == status_filter]
+    if search.strip():
+        query = search.strip().casefold()
+        visible_tasks = [
+            task for task in visible_tasks
+            if query in task["title"].casefold()
+            or query in (task["description"] or "").casefold()
+            or query in (task["blocker"] or "").casefold()
+        ]
+    priority = {"Blocked": 0, "Needs Clarification": 1, "Pending": 2, "In Progress": 3, "Complete": 4}
+    visible_tasks.sort(key=lambda task: (priority.get(task["status"], 5), task["id"]))
     if not visible_tasks:
         st.info("No tasks match this filter yet.")
     else:

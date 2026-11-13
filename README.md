@@ -37,4 +37,4 @@ See [HANDOFF.md](HANDOFF.md) for project rules and current implementation notes.
 
 ## Build sequence
 
-This is being built solo in phases: backend, functional frontend, UI/UX refinement, then remaining improvements. The backend and functional Streamlit dashboard are in place; the next phase is visual and interaction polish.
+This is being built solo in phases: backend, functional frontend, UI/UX refinement, then remaining improvements. The dashboard now has a first visual pass, status colors, search, filters, and blocker-first task ordering. Further polish can follow the first live demo.

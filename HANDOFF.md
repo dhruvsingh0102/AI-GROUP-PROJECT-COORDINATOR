@@ -13,8 +13,8 @@ Build W-PS-1, AI Group Project Coordinator. Dhruv is building the project solo; 
 
 ## Current state
 - Implemented: `engine.py`, `storage.py`, `bot.py`, `dashboard.py`, `seed.py`, `check_setup.py`, `test_engine.py`, and `llm.py`.
-- Functional Streamlit dashboard displays status counts, task details, blockers, participant updates, Telegram follow-ups, and participant Telegram-link state. It supports adding participants/tasks and manually changing task statuses.
-- Build sequence: backend and functional frontend are in place; visual UI/UX refinement is next.
+- Streamlit dashboard displays status counts, task details, blockers, participant updates, Telegram follow-ups, and participant Telegram-link state. It supports adding participants/tasks, manual status changes, status filtering, and task/blocker search; blocked and unclear tasks appear first.
+- The dashboard has a first styling pass with distinct status colors and responsive spacing. Further UI/UX polish can follow the first live demo.
 - SQLite stores seeded people, tasks, and update history in `coordinator.db`.
 - Seeded demo task starts Pending and is assigned to the second seeded participant; the third participant is the designated unblocker.
 - Every demo participant links Telegram with `/start <seeded name>`. Telegram bots cannot message a user before that user has started the bot.
