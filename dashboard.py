@@ -2,12 +2,28 @@
 import streamlit as st
 from dotenv import load_dotenv
 import os
+import hmac
 
 load_dotenv()
 import storage
 
 
 st.set_page_config(page_title="Coordinator", page_icon="🧭", layout="wide")
+if storage.using_supabase():
+    app_password = os.getenv("APP_PASSWORD", "")
+    if not app_password:
+        st.error("Set APP_PASSWORD in the server environment before using the Supabase dashboard.")
+        st.stop()
+    if not st.session_state.get("dashboard_authenticated"):
+        with st.form("dashboard_login"):
+            password = st.text_input("Dashboard password", type="password")
+            submitted = st.form_submit_button("Sign in")
+        if submitted:
+            if hmac.compare_digest(password, app_password):
+                st.session_state.dashboard_authenticated = True
+                st.rerun()
+            st.error("Incorrect password.")
+        st.stop()
 storage.init_db()
 
 STATUSES = ["Pending", "In Progress", "Blocked", "Needs Clarification", "Complete"]

@@ -19,6 +19,8 @@ python check_setup.py
 python seed.py "Coordinator Name" "Participant Name" "Unblocker Name"
 ```
 
+By default, the app stores data in local SQLite (`coordinator.db`). For a hosted deployment, create a Supabase project, run [`supabase/schema.sql`](supabase/schema.sql) in its SQL Editor, then set `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and a strong `APP_PASSWORD` in the server environment. Setting both Supabase values switches storage to Supabase; leaving both blank keeps SQLite. Never put the secret key in browser code or commit it. The dashboard requires `APP_PASSWORD` in Supabase mode because the server key has elevated database access.
+
 Start the bot and dashboard in separate terminals:
 
 ```sh

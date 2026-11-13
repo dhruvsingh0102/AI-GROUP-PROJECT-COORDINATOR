@@ -2,3 +2,4 @@ python-telegram-bot>=21,<23
 streamlit>=1.39,<2
 python-dotenv>=1,<2
 openai>=1.50,<3
+supabase>=2,<3

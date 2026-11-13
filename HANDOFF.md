@@ -15,7 +15,7 @@ Build W-PS-1, AI Group Project Coordinator. Dhruv is building the project solo; 
 - Implemented: `engine.py`, `storage.py`, `bot.py`, `dashboard.py`, `seed.py`, `check_setup.py`, `test_engine.py`, and `llm.py`.
 - Streamlit dashboard displays status counts, task details, blockers, participant updates, Telegram follow-ups, and participant Telegram-link state. It supports adding participants/tasks, editing owners and unblockers, manual status changes, status filtering, task/blocker search, and the `/ask <task_id>` command; blocked and unclear tasks appear first.
 - The dashboard has a first styling pass with distinct status colors and responsive spacing. Further UI/UX polish can follow the first live demo.
-- SQLite stores seeded people, tasks, and update history in `coordinator.db`.
+- SQLite stores local data in `coordinator.db`. Supabase is available for hosted persistence; run `supabase/schema.sql` and set `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `APP_PASSWORD` on the server to enable it.
 - Seeded demo task starts Pending and is assigned to the second seeded participant; the third participant is the designated unblocker.
 - Every demo participant links Telegram with `/start <seeded name>`. Telegram bots cannot message a user before that user has started the bot.
 - Model default: `mimo-v2.6-flash-free`, OpenCode OpenAI-compatible endpoint `https://opencode.ai/inference/openai/v1`.
@@ -24,6 +24,7 @@ Build W-PS-1, AI Group Project Coordinator. Dhruv is building the project solo; 
 1. `python3 -m venv .venv`
 2. Activate it, then `pip install -r requirements.txt`.
 3. Copy `.env.example` to `.env`; fill in `TELEGRAM_BOT_TOKEN` and `LLM_API_KEY` locally.
+   For deployment, run `supabase/schema.sql` in the Supabase SQL Editor and configure `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `APP_PASSWORD` in the server environment. Keep the secret key server-side.
 4. `python test_engine.py` and `python check_setup.py`.
 5. `python seed.py <coordinator> <participant> <unblocker>`.
 6. In separate terminals run `python bot.py` and `streamlit run dashboard.py --server.address 127.0.0.1`.
