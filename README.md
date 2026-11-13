@@ -19,7 +19,17 @@ python check_setup.py
 python seed.py "Coordinator Name" "Participant Name" "Unblocker Name"
 ```
 
-Start the bot with `python bot.py`. Each demo participant links their account with `/start Their Name`. Use `/tasks` to see task IDs, then `/ask <task_id>` to send a real follow-up. They reply in Telegram; the bot interprets the response and records the status change. The assigned unblocker receives an escalation when a task becomes Blocked.
+Start the bot and dashboard in separate terminals:
+
+```sh
+python bot.py
+```
+
+```sh
+streamlit run dashboard.py
+```
+
+Each demo participant links their account with `/start Their Name`. Use `/tasks` to see task IDs, then `/ask <task_id>` to send a real follow-up. They reply in Telegram; the bot interprets the response and records the status change. The assigned unblocker receives an escalation when a task becomes Blocked. The dashboard shows task status, blockers, participants, sent follow-ups, and participant replies; it also lets you add participants and tasks or manually change task status.
 
 The seeded task starts **Pending**. The engine marks “The API is connected, but I am waiting for test credentials” **Blocked** with blocker **test credentials**. After the participant receives credentials, finishes testing, and replies that the task is complete, the bot marks it **Complete**. Rule-based classification works when the LLM key is absent; the optional model only helps detect blockers in ambiguous replies and cannot mark tasks Complete.
 
@@ -27,4 +37,4 @@ See [HANDOFF.md](HANDOFF.md) for project rules and current implementation notes.
 
 ## Build sequence
 
-This is being built solo in phases: backend, frontend, UI/UX, then remaining improvements. The current repository phase is the Telegram and task-processing backend.
+This is being built solo in phases: backend, functional frontend, UI/UX refinement, then remaining improvements. The backend and functional Streamlit dashboard are in place; the next phase is visual and interaction polish.

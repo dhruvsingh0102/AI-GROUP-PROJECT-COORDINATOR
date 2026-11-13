@@ -12,7 +12,9 @@ Build W-PS-1, AI Group Project Coordinator. Dhruv is building the project solo; 
 - The optional OpenCode Zen model may identify a blocker but cannot mark a task Complete.
 
 ## Current state
-- Fresh implementation: `engine.py`, `storage.py`, `bot.py`, `dashboard.py`, `seed.py`, `check_setup.py`, `test_engine.py`, and `llm.py`.
+- Implemented: `engine.py`, `storage.py`, `bot.py`, `dashboard.py`, `seed.py`, `check_setup.py`, `test_engine.py`, and `llm.py`.
+- Functional Streamlit dashboard displays status counts, task details, blockers, participant updates, Telegram follow-ups, and participant Telegram-link state. It supports adding participants/tasks and manually changing task statuses.
+- Build sequence: backend and functional frontend are in place; visual UI/UX refinement is next.
 - SQLite stores seeded people, tasks, and update history in `coordinator.db`.
 - Seeded demo task starts Pending and is assigned to the second seeded participant; the third participant is the designated unblocker.
 - Every demo participant links Telegram with `/start <seeded name>`. Telegram bots cannot message a user before that user has started the bot.
