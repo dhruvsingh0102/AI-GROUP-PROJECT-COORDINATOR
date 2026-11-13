@@ -144,7 +144,7 @@ with people_tab:
                     {"Name": person["name"], "Telegram": "Linked" if person["telegram_id"] else "Not linked"}
                     for person in people
                 ],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
         else:
