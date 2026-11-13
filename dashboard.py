@@ -1,6 +1,7 @@
 """Functional Streamlit frontend for the project coordinator."""
 import streamlit as st
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 import storage
@@ -44,6 +45,16 @@ st.markdown(
         letter-spacing: .08em; text-transform: uppercase; margin-bottom: .25rem;
       }
       .coordinator-subtitle { color: #627086; margin-top: -.6rem; margin-bottom: 1.4rem; }
+      .stButton > button[kind="primary"] {
+        background: #315fa6; border-color: #315fa6; border-radius: 9px; font-weight: 650;
+      }
+      .stButton > button[kind="primary"]:hover { background: #244d8c; border-color: #244d8c; }
+      [data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea {
+        border-radius: 9px; border-color: #d9e0ea;
+      }
+      [data-testid="stSelectbox"] div[data-baseweb="select"] > div { border-radius: 9px; }
+      [data-testid="stAlert"] { border-radius: 11px; }
+      #MainMenu, footer { visibility: hidden; }
       @media (max-width: 700px) {
         [data-testid="stAppViewContainer"] .main .block-container { padding: 1rem .8rem 2rem; }
       }
@@ -89,7 +100,7 @@ def create_task_form(people):
             st.rerun()
 
 
-def render_task(task):
+def render_task(task, people):
     with st.container(border=True):
         title_col, status_col = st.columns([4, 1])
         title_col.subheader(f"#{task['id']} · {task['title']}")
@@ -111,30 +122,53 @@ def render_task(task):
             st.error(f"Blocker: {task['blocker'] or 'Not recorded'}")
 
         with st.form(f"task_update_{task['id']}"):
-            left, right = st.columns([1, 2])
+            names = [person["name"] for person in people]
+            left, right = st.columns(2)
             new_status = left.selectbox(
                 "Change status",
                 STATUSES,
                 index=STATUSES.index(task["status"]),
                 key=f"status_{task['id']}",
             )
+            owner_options = ["Unassigned"] + names
+            unblocker_options = ["None"] + names
+            owner = right.selectbox(
+                "Owner",
+                owner_options,
+                index=owner_options.index(task["assignee"] or "Unassigned"),
+                key=f"owner_{task['id']}",
+            )
+            left, right = st.columns(2)
+            unblocker = left.selectbox(
+                "Can unblock",
+                unblocker_options,
+                index=unblocker_options.index(task["unblocker"] or "None"),
+                key=f"unblocker_{task['id']}",
+            )
             blocker = right.text_input(
                 "Blocker (required when Blocked)",
                 value=task["blocker"] or "",
                 key=f"blocker_{task['id']}",
             )
-            submitted = st.form_submit_button("Save status")
+            submitted = st.form_submit_button("Save task changes", type="primary")
             if submitted:
                 if new_status == "Blocked" and not blocker.strip():
                     st.error("Add the dependency that is blocking this task.")
                 else:
-                    storage.set_task_status(task["id"], new_status, blocker.strip() if new_status == "Blocked" else None)
+                    owner_id = next((person["id"] for person in people if person["name"] == owner), None)
+                    unblocker_id = next((person["id"] for person in people if person["name"] == unblocker), None)
+                    storage.update_task_management(
+                        task["id"], new_status, blocker.strip() if new_status == "Blocked" else None,
+                        owner_id, unblocker_id,
+                    )
                     st.rerun()
 
 
 st.markdown('<div class="coordinator-eyebrow">W-PS-1 · AI Group Project Coordinator</div>', unsafe_allow_html=True)
 st.title("Project Coordinator")
 st.markdown('<div class="coordinator-subtitle">Keep the group project moving. Track progress, replies, and blockers in one place.</div>', unsafe_allow_html=True)
+if not os.getenv("TELEGRAM_BOT_TOKEN", "").strip():
+    st.warning("Telegram isn’t configured yet. Add TELEGRAM_BOT_TOKEN to .env, then start the bot with python bot.py.")
 
 people = storage.people()
 all_tasks = storage.tasks()
@@ -146,6 +180,19 @@ for col, (status, count) in zip(metric_cols, counts.items()):
 tasks_tab, activity_tab, people_tab = st.tabs(["Tasks", "Activity", "Participants"])
 
 with tasks_tab:
+    with st.expander("Send a Telegram follow-up"):
+        open_tasks = [task for task in all_tasks if task["status"] != "Complete" and task["assignee"]]
+        if open_tasks:
+            tasks_by_id = {task["id"]: task for task in open_tasks}
+            followup_task_id = st.selectbox(
+                "Choose an assigned task",
+                list(tasks_by_id),
+                format_func=lambda task_id: f"#{task_id} · {tasks_by_id[task_id]['title']} — {tasks_by_id[task_id]['assignee']}",
+            )
+            st.write("In Telegram, send this command to the coordinator bot:")
+            st.code(f"/ask {followup_task_id}", language=None)
+        else:
+            st.info("Assign an open task before sending a follow-up.")
     with st.expander("Add a task", expanded=not all_tasks):
         create_task_form(people)
     filter_col, search_col = st.columns([1, 2])
@@ -166,7 +213,7 @@ with tasks_tab:
         st.info("No tasks match this filter yet.")
     else:
         for task in visible_tasks:
-            render_task(task)
+            render_task(task, people)
 
 with activity_tab:
     updates, followups = st.tabs(["Participant replies", "Follow-ups sent"])

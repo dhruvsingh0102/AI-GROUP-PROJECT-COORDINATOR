@@ -26,10 +26,10 @@ python bot.py
 ```
 
 ```sh
-streamlit run dashboard.py
+streamlit run dashboard.py --server.address 127.0.0.1
 ```
 
-Each demo participant links their account with `/start Their Name`. Use `/tasks` to see task IDs, then `/ask <task_id>` to send a real follow-up. They reply in Telegram; the bot interprets the response and records the status change. The assigned unblocker receives an escalation when a task becomes Blocked. The dashboard shows task status, blockers, participants, sent follow-ups, and participant replies; it also lets you add participants and tasks or manually change task status.
+Each demo participant links their account with `/start Their Name`. Use `/tasks` to see task IDs, then `/ask <task_id>` to send a real follow-up. They reply in Telegram; the bot interprets the response and records the status change. The assigned unblocker receives an escalation when a task becomes Blocked. The dashboard shows task status, blockers, participants, sent follow-ups, and participant replies. It also lets you add participants and tasks, edit task owners and unblockers, change task status, search/filter tasks, and copy the `/ask <task_id>` command for a Telegram check-in. The dashboard binds to localhost.
 
 The seeded task starts **Pending**. The engine marks “The API is connected, but I am waiting for test credentials” **Blocked** with blocker **test credentials**. After the participant receives credentials, finishes testing, and replies that the task is complete, the bot marks it **Complete**. Rule-based classification works when the LLM key is absent; the optional model only helps detect blockers in ambiguous replies and cannot mark tasks Complete.
 

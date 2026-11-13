@@ -13,7 +13,7 @@ Build W-PS-1, AI Group Project Coordinator. Dhruv is building the project solo; 
 
 ## Current state
 - Implemented: `engine.py`, `storage.py`, `bot.py`, `dashboard.py`, `seed.py`, `check_setup.py`, `test_engine.py`, and `llm.py`.
-- Streamlit dashboard displays status counts, task details, blockers, participant updates, Telegram follow-ups, and participant Telegram-link state. It supports adding participants/tasks, manual status changes, status filtering, and task/blocker search; blocked and unclear tasks appear first.
+- Streamlit dashboard displays status counts, task details, blockers, participant updates, Telegram follow-ups, and participant Telegram-link state. It supports adding participants/tasks, editing owners and unblockers, manual status changes, status filtering, task/blocker search, and the `/ask <task_id>` command; blocked and unclear tasks appear first.
 - The dashboard has a first styling pass with distinct status colors and responsive spacing. Further UI/UX polish can follow the first live demo.
 - SQLite stores seeded people, tasks, and update history in `coordinator.db`.
 - Seeded demo task starts Pending and is assigned to the second seeded participant; the third participant is the designated unblocker.
@@ -26,7 +26,7 @@ Build W-PS-1, AI Group Project Coordinator. Dhruv is building the project solo; 
 3. Copy `.env.example` to `.env`; fill in `TELEGRAM_BOT_TOKEN` and `LLM_API_KEY` locally.
 4. `python test_engine.py` and `python check_setup.py`.
 5. `python seed.py <coordinator> <participant> <unblocker>`.
-6. In separate terminals run `python bot.py` and `streamlit run dashboard.py`.
+6. In separate terminals run `python bot.py` and `streamlit run dashboard.py --server.address 127.0.0.1`.
 7. Each person starts the bot with `/start <their name>`. The coordinator sends `/ask <task_id>`. The participant replies: `The API is connected, but I am waiting for test credentials.` Expect Blocked / test credentials and a Telegram escalation to the unblocker.
 
 ## Known limits / next steps

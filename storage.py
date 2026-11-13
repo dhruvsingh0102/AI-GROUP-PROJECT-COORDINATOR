@@ -79,6 +79,15 @@ def set_task_status(task_id: int, status: str, blocker: str | None = None):
         db.execute("UPDATE tasks SET status=?, blocker=?, updated_at=CURRENT_TIMESTAMP WHERE id=?", (status, blocker, task_id))
 
 
+def update_task_management(task_id: int, status: str, blocker: str | None, assignee_id: int | None, unblocker_id: int | None):
+    with connect() as db:
+        db.execute(
+            """UPDATE tasks SET status=?, blocker=?, assignee_id=?, unblocker_id=?,
+               updated_at=CURRENT_TIMESTAMP WHERE id=?""",
+            (status, blocker, assignee_id, unblocker_id, task_id),
+        )
+
+
 def add_update(task_id: int, person_id: int | None, message: str, status: str, blocker: str | None):
     with connect() as db:
         db.execute("INSERT INTO updates(task_id,person_id,message,status,blocker) VALUES(?,?,?,?,?)", (task_id, person_id, message, status, blocker))
