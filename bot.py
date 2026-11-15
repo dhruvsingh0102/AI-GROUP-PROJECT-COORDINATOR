@@ -11,6 +11,9 @@ from llm import extract_blocker
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
+# HTTP client INFO logs include request URLs. Telegram bot URLs contain the bot token.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):

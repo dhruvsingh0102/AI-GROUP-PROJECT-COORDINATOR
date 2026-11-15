@@ -1,4 +1,6 @@
 """Optional LLM assist: it may identify a blocker, but cannot mark work complete."""
+from __future__ import annotations
+
 import json
 import os
 from openai import OpenAI
