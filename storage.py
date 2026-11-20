@@ -4,7 +4,9 @@ from __future__ import annotations
 from functools import lru_cache
 import os
 from pathlib import Path
+import re
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 
@@ -44,10 +46,11 @@ def init_db():
     if using_supabase():
         # Keep deployment setup explicit: the schema is created from supabase/schema.sql.
         try:
-            supabase_client().table("people").select("id").limit(1).execute()
+            supabase_client().table("people").select("id,whatsapp_phone,whatsapp_last_inbound_at").limit(1).execute()
+            supabase_client().table("processed_whatsapp_messages").select("message_id").limit(1).execute()
         except Exception as exc:
             raise RuntimeError(
-                "Could not read Supabase table public.people. Check the project URL/key and run supabase/schema.sql. "
+                "Could not read the WhatsApp schema in Supabase. Run supabase/whatsapp_migration.sql. "
                 f"Details: {exc}"
             ) from exc
         return
@@ -56,7 +59,8 @@ def init_db():
         db.executescript("""
         CREATE TABLE IF NOT EXISTS people (
           id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE,
-          telegram_id INTEGER UNIQUE
+          telegram_id INTEGER UNIQUE, whatsapp_phone TEXT UNIQUE,
+          whatsapp_last_inbound_at TEXT
         );
         CREATE TABLE IF NOT EXISTS tasks (
           id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '',
@@ -74,15 +78,33 @@ def init_db():
           recipient_id INTEGER NOT NULL REFERENCES people(id), message TEXT NOT NULL,
           sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS processed_whatsapp_messages (
+          message_id TEXT PRIMARY KEY,
+          received_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         """)
+        people_columns = {row["name"] for row in db.execute("PRAGMA table_info(people)").fetchall()}
+        if "whatsapp_phone" not in people_columns:
+            db.execute("ALTER TABLE people ADD COLUMN whatsapp_phone TEXT")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS people_whatsapp_phone_idx ON people(whatsapp_phone)")
+        if "whatsapp_last_inbound_at" not in people_columns:
+            db.execute("ALTER TABLE people ADD COLUMN whatsapp_last_inbound_at TEXT")
 
 
 def _remote_rows(response) -> list[dict]:
     return response.data or []
 
 
-def add_person(name: str, telegram_id: int | None = None):
+def normalize_whatsapp_phone(phone: str) -> str:
+    digits = re.sub(r"\D", "", str(phone or ""))
+    if not 8 <= len(digits) <= 15:
+        raise ValueError("WhatsApp phone numbers must be in international format with 8 to 15 digits.")
+    return digits
+
+
+def add_person(name: str, whatsapp_phone: str | None = None):
     name = name.strip()
+    phone = normalize_whatsapp_phone(whatsapp_phone) if whatsapp_phone else None
     if using_supabase():
         client = supabase_client()
         normalized = name.casefold()
@@ -91,9 +113,12 @@ def add_person(name: str, telegram_id: int | None = None):
         )
         if rows:
             row = rows[0]
-            if telegram_id is not None:
+            if phone is not None:
                 updated = _remote_rows(
-                    client.table("people").update({"telegram_id": telegram_id}).eq("id", row["id"]).execute()
+                    client.table("people").update({
+                        "whatsapp_phone": phone,
+                        "whatsapp_last_inbound_at": datetime.now(timezone.utc).isoformat(),
+                    }).eq("id", row["id"]).execute()
                 )
                 if updated:
                     return updated[0]
@@ -102,29 +127,71 @@ def add_person(name: str, telegram_id: int | None = None):
             client.table("people").insert({
                 "name": name,
                 "name_normalized": normalized,
-                "telegram_id": telegram_id,
+                "whatsapp_phone": phone,
+                "whatsapp_last_inbound_at": datetime.now(timezone.utc).isoformat() if phone else None,
             }).execute()
         )
         return rows[0] if rows else None
 
     with connect() as db:
         db.execute(
-            "INSERT INTO people(name,telegram_id) VALUES(?,?) "
-            "ON CONFLICT(name) DO UPDATE SET telegram_id=COALESCE(excluded.telegram_id,people.telegram_id)",
-            (name, telegram_id),
+            "INSERT INTO people(name,whatsapp_phone,whatsapp_last_inbound_at) VALUES(?,?,CASE WHEN ? IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END) "
+            "ON CONFLICT(name) DO UPDATE SET "
+            "whatsapp_phone=COALESCE(excluded.whatsapp_phone,people.whatsapp_phone), "
+            "whatsapp_last_inbound_at=CASE WHEN excluded.whatsapp_phone IS NOT NULL THEN CURRENT_TIMESTAMP ELSE people.whatsapp_last_inbound_at END",
+            (name, phone, phone),
         )
         return dict(db.execute("SELECT * FROM people WHERE name=? COLLATE NOCASE", (name,)).fetchone())
 
 
-def person_by_telegram(telegram_id: int):
+def person_by_whatsapp(phone: str):
+    phone = normalize_whatsapp_phone(phone)
     if using_supabase():
         rows = _remote_rows(
-            supabase_client().table("people").select("*").eq("telegram_id", telegram_id).limit(1).execute()
+            supabase_client().table("people").select("*").eq("whatsapp_phone", phone).limit(1).execute()
         )
         return rows[0] if rows else None
     with connect() as db:
-        row = db.execute("SELECT * FROM people WHERE telegram_id=?", (telegram_id,)).fetchone()
+        row = db.execute("SELECT * FROM people WHERE whatsapp_phone=?", (phone,)).fetchone()
         return dict(row) if row else None
+
+
+def note_whatsapp_inbound(person_id: int):
+    if using_supabase():
+        supabase_client().table("people").update({
+            "whatsapp_last_inbound_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", person_id).execute()
+        return
+    with connect() as db:
+        db.execute("UPDATE people SET whatsapp_last_inbound_at=CURRENT_TIMESTAMP WHERE id=?", (person_id,))
+
+
+def whatsapp_window_open(person: dict, hours: int = 24) -> bool:
+    value = person.get("whatsapp_last_inbound_at")
+    if not value:
+        return False
+    try:
+        last_message = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if last_message.tzinfo is None:
+            last_message = last_message.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - last_message < timedelta(hours=hours)
+    except ValueError:
+        return False
+
+
+def claim_whatsapp_message(message_id: str) -> bool:
+    """Return false for webhook retries already processed by Meta."""
+    if using_supabase():
+        try:
+            supabase_client().table("processed_whatsapp_messages").insert({"message_id": message_id}).execute()
+            return True
+        except Exception as exc:
+            if "23505" in str(exc) or "duplicate key" in str(exc).lower():
+                return False
+            raise
+    with connect() as db:
+        cursor = db.execute("INSERT OR IGNORE INTO processed_whatsapp_messages(message_id) VALUES(?)", (message_id,))
+        return cursor.rowcount == 1
 
 
 def people():

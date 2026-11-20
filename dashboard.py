@@ -183,8 +183,8 @@ def render_task(task, people):
 st.markdown('<div class="coordinator-eyebrow">W-PS-1 · AI Group Project Coordinator</div>', unsafe_allow_html=True)
 st.title("Project Coordinator")
 st.markdown('<div class="coordinator-subtitle">Keep the group project moving. Track progress, replies, and blockers in one place.</div>', unsafe_allow_html=True)
-if not os.getenv("TELEGRAM_BOT_TOKEN", "").strip():
-    st.warning("Telegram isn’t configured yet. Add TELEGRAM_BOT_TOKEN to .env, then start the bot with python bot.py.")
+if not all(os.getenv(key, "").strip() for key in ("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET")):
+    st.warning("WhatsApp isn’t configured yet. Add the Meta Cloud API values to .env, then run python bot.py.")
 
 people = storage.people()
 all_tasks = storage.tasks()
@@ -196,7 +196,7 @@ for col, (status, count) in zip(metric_cols, counts.items()):
 tasks_tab, activity_tab, people_tab = st.tabs(["Tasks", "Activity", "Participants"])
 
 with tasks_tab:
-    with st.expander("Send a Telegram follow-up"):
+    with st.expander("Send a WhatsApp follow-up"):
         open_tasks = [task for task in all_tasks if task["status"] != "Complete" and task["assignee"]]
         if open_tasks:
             tasks_by_id = {task["id"]: task for task in open_tasks}
@@ -205,7 +205,7 @@ with tasks_tab:
                 list(tasks_by_id),
                 format_func=lambda task_id: f"#{task_id} · {tasks_by_id[task_id]['title']} — {tasks_by_id[task_id]['assignee']}",
             )
-            st.write("In Telegram, send this command to the coordinator bot:")
+            st.write("From your linked WhatsApp account, send this command to the coordinator number:")
             st.code(f"/ask {followup_task_id}", language=None)
         else:
             st.info("Assign an open task before sending a follow-up.")
@@ -236,7 +236,7 @@ with activity_tab:
     with updates:
         history = storage.update_history()
         if not history:
-            st.info("Participant replies will appear here after the bot records them.")
+            st.info("Participant replies will appear here after WhatsApp records them.")
         for entry in history:
             with st.container(border=True):
                 st.markdown(f"**{entry['title']}** · {entry['status']} · {entry['person'] or 'Unknown participant'}")
@@ -247,7 +247,7 @@ with activity_tab:
     with followups:
         history = storage.followup_history()
         if not history:
-            st.info("Follow-ups sent from Telegram will appear here.")
+            st.info("WhatsApp follow-ups sent to participants will appear here.")
         for entry in history:
             with st.container(border=True):
                 st.markdown(f"**{entry['title']}** · To {entry['recipient']}")
@@ -264,7 +264,7 @@ with people_tab:
         if people:
             st.dataframe(
                 [
-                    {"Name": person["name"], "Telegram": "Linked" if person["telegram_id"] else "Not linked"}
+                    {"Name": person["name"], "WhatsApp": "Linked" if person.get("whatsapp_phone") else "Not linked"}
                     for person in people
                 ],
                 width="stretch",

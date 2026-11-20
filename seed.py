@@ -22,7 +22,7 @@ def main(argv):
         )
     print("Seeded demo participants: " + ", ".join(p["name"] for p in (owner, participant, unblocker)))
     print(f"Demo task: Connect API and run integration test (Pending; assigned to {participant['name']}; unblocker: {unblocker['name']}).")
-    print("Each participant must link Telegram with /start <their seeded name> before follow-ups or escalations can be delivered.")
+    print("Each participant links WhatsApp by messaging the configured business number with /start <their seeded name>.")
 
 
 if __name__ == "__main__":
